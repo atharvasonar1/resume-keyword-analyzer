@@ -47,6 +47,15 @@ def find_likely_columns(df):
     return title_column, description_column
 
 
+def filter_by_job_title(df, search_term, title_column="title"):
+    if title_column not in df.columns:
+        raise ValueError(f"Title column not found: {title_column}")
+
+    matches = df[title_column].astype(str).str.contains(search_term, case=False, na=False)
+
+    return df[matches].copy()
+
+
 def inspect_dataset(df):
     rows, columns = df.shape
     title_column, description_column = find_likely_columns(df)
