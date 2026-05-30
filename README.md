@@ -18,6 +18,12 @@ The project is designed to help users compare a target role, such as data analys
 
 This project will use a CSV dataset of job postings. A preferred dataset is the Kaggle LinkedIn Job Postings 2023-2024 dataset.
 
+The dataset should be downloaded manually and placed at:
+
+```text
+data/jobs.csv
+```
+
 Expected fields include:
 
 - Job title
@@ -25,7 +31,9 @@ Expected fields include:
 - Location
 - Job description
 
-Large datasets should be downloaded manually and should not be committed to GitHub.
+The exact column names may vary depending on the dataset and will be confirmed during the dataset loading step.
+
+Large datasets should be downloaded manually and should not be committed to GitHub. CSV files in the `data/` folder are ignored by `.gitignore`.
 
 ## Planned Features
 
