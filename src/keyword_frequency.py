@@ -2,14 +2,15 @@
 
 from collections import Counter
 import pandas as pd
-from src.preprocessing import preprocess_series, tokens_to_string
+from src.preprocessing import preprocess_series, clean_text, tokens_to_string
 
 # Curated list of technical and soft skills commonly found in job postings.
 # Extend this list as needed for your dataset.
+# Multi-word skills are supported and matched against the cleaned description string.
 SKILL_KEYWORDS = {
     # Programming languages
     "python", "java", "javascript", "typescript", "sql", "r", "scala",
-    "kotlin", "swift", "go", "rust", "c", "cpp", "csharp", "ruby", "php",
+    "kotlin", "swift", "go", "rust", "ruby", "php",
     # Data & ML
     "pandas", "numpy", "scikit", "tensorflow", "pytorch", "keras",
     "spark", "hadoop", "tableau", "powerbi", "excel", "matplotlib",
@@ -30,7 +31,7 @@ SKILL_KEYWORDS = {
 }
 
 
-def get_top_keywords(token_lists: list[list[str]], top_n: int = 30) -> pd.DataFrame:
+def get_top_keywords(token_lists: list, top_n: int = 30) -> pd.DataFrame:
     """
     Count the most frequent tokens across all job descriptions.
 
@@ -43,9 +44,12 @@ def get_top_keywords(token_lists: list[list[str]], top_n: int = 30) -> pd.DataFr
     -------
     DataFrame with columns ['keyword', 'count', 'frequency_pct'].
     """
+    total_docs = len(token_lists)
+    if total_docs == 0:
+        return pd.DataFrame(columns=["keyword", "count", "frequency_pct"])
+
     all_tokens = [token for tokens in token_lists for token in tokens]
     counts = Counter(all_tokens)
-    total_docs = len(token_lists)
 
     top = counts.most_common(top_n)
     rows = []
@@ -60,33 +64,36 @@ def get_top_keywords(token_lists: list[list[str]], top_n: int = 30) -> pd.DataFr
     return pd.DataFrame(rows)
 
 
-def get_skill_frequency(token_lists: list[list[str]], top_n: int = 30) -> pd.DataFrame:
+def get_skill_frequency(cleaned_texts: list, top_n: int = 30) -> pd.DataFrame:
     """
-    Filter token counts to only recognised skill keywords.
+    Count how often each skill keyword appears across job descriptions.
+
+    Checks against the full cleaned description string so that multi-word
+    skills like 'machine learning' are matched correctly.
 
     Parameters
     ----------
-    token_lists : list of token lists produced by preprocessing.
+    cleaned_texts : list of cleaned description strings (output of clean_text).
     top_n : number of top skills to return.
 
     Returns
     -------
     DataFrame with columns ['skill', 'count', 'frequency_pct'].
     """
-    total_docs = len(token_lists)
-    skill_counter: Counter = Counter()
-    skill_doc_freq: Counter = Counter()
+    total_docs = len(cleaned_texts)
+    if total_docs == 0:
+        return pd.DataFrame(columns=["skill", "count", "frequency_pct"])
 
-    for tokens in token_lists:
-        token_set = set(tokens)
-        for token in tokens:
-            if token in SKILL_KEYWORDS:
-                skill_counter[token] += 1
+    skill_count = Counter()
+    skill_doc_freq = Counter()
+
+    for text in cleaned_texts:
         for skill in SKILL_KEYWORDS:
-            if skill in token_set:
+            if skill in text:
+                skill_count[skill] += 1
                 skill_doc_freq[skill] += 1
 
-    top = skill_counter.most_common(top_n)
+    top = skill_count.most_common(top_n)
     rows = []
     for skill, count in top:
         rows.append({
@@ -100,7 +107,7 @@ def get_skill_frequency(token_lists: list[list[str]], top_n: int = 30) -> pd.Dat
 
 def compute_keyword_frequency(filtered_df: pd.DataFrame,
                               description_col: str = "description",
-                              top_n: int = 30) -> tuple[pd.DataFrame, pd.DataFrame]:
+                              top_n: int = 30) -> tuple:
     """
     Main entry point: preprocess descriptions and return both
     overall keyword and skill frequency tables.
@@ -115,14 +122,24 @@ def compute_keyword_frequency(filtered_df: pd.DataFrame,
     -------
     (top_keywords_df, top_skills_df)
     """
+    if filtered_df.empty:
+        print("Warning: empty DataFrame passed to compute_keyword_frequency.")
+        empty = pd.DataFrame()
+        return empty, empty
+
     if description_col not in filtered_df.columns:
         raise ValueError(f"Column '{description_col}' not found in DataFrame.")
 
     print(f"Preprocessing {len(filtered_df)} job descriptions...")
+
+    # Token lists for general keyword frequency
     token_series = preprocess_series(filtered_df[description_col])
     token_lists = token_series.tolist()
 
+    # Cleaned strings for multi-word skill matching
+    cleaned_texts = filtered_df[description_col].apply(clean_text).tolist()
+
     top_keywords_df = get_top_keywords(token_lists, top_n=top_n)
-    top_skills_df = get_skill_frequency(token_lists, top_n=top_n)
+    top_skills_df = get_skill_frequency(cleaned_texts, top_n=top_n)
 
     return top_keywords_df, top_skills_df

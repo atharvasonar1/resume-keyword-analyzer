@@ -6,7 +6,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from src.preprocessing import preprocess_series, tokens_to_string
 
 
-def build_tfidf_matrix(corpus: list[str],
+def build_tfidf_matrix(corpus: list,
                         max_features: int = 5000,
                         ngram_range: tuple = (1, 2)):
     """
@@ -20,14 +20,14 @@ def build_tfidf_matrix(corpus: list[str],
 
     Returns
     -------
-    vectorizer : Fitted TfidfVectorizer.
+    vectorizer   : Fitted TfidfVectorizer.
     tfidf_matrix : Sparse matrix of shape (n_docs, n_features).
     """
     vectorizer = TfidfVectorizer(
         max_features=max_features,
         ngram_range=ngram_range,
-        sublinear_tf=True,   # apply log normalization to term frequency
-        min_df=2,            # ignore terms that appear in fewer than 2 docs
+        sublinear_tf=True,  # apply log normalization to term frequency
+        min_df=1,           # keep all terms; safe for small filtered datasets
     )
     tfidf_matrix = vectorizer.fit_transform(corpus)
     return vectorizer, tfidf_matrix
@@ -62,7 +62,7 @@ def get_top_tfidf_terms(vectorizer: TfidfVectorizer,
 
 def get_tfidf_by_document(vectorizer: TfidfVectorizer,
                            tfidf_matrix,
-                           top_n: int = 10) -> list[pd.DataFrame]:
+                           top_n: int = 10) -> list:
     """
     For each document return its top-N TF-IDF terms.
 
@@ -89,9 +89,9 @@ def run_tfidf_analysis(filtered_df: pd.DataFrame,
                         description_col: str = "description",
                         top_n: int = 30,
                         max_features: int = 5000,
-                        ngram_range: tuple = (1, 2)) -> tuple[pd.DataFrame, TfidfVectorizer, object]:
+                        ngram_range: tuple = (1, 2)) -> tuple:
     """
-    Full TF-IDF pipeline: preprocess → vectorize → rank terms.
+    Full TF-IDF pipeline: preprocess -> vectorize -> rank terms.
 
     Parameters
     ----------
@@ -108,6 +108,10 @@ def run_tfidf_analysis(filtered_df: pd.DataFrame,
         vectorizer   : Fitted TfidfVectorizer (reusable for transforms).
         tfidf_matrix : Sparse matrix (useful for further analysis).
     """
+    if filtered_df.empty:
+        print("Warning: empty DataFrame passed to run_tfidf_analysis.")
+        return pd.DataFrame(columns=["term", "mean_tfidf"]), None, None
+
     if description_col not in filtered_df.columns:
         raise ValueError(f"Column '{description_col}' not found in DataFrame.")
 
@@ -126,4 +130,4 @@ def run_tfidf_analysis(filtered_df: pd.DataFrame,
     top_terms_df = get_top_tfidf_terms(vectorizer, tfidf_matrix, top_n=top_n)
 
     print(f"TF-IDF complete. Vocabulary size: {len(vectorizer.vocabulary_)}")
-    return top_terms_df, vectorizer, tfidf_matrix# Identifies role-specific keywords using TF-IDF.
+    return top_terms_df, vectorizer, tfidf_matrix
