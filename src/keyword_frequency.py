@@ -123,6 +123,12 @@ def get_skill_frequency(cleaned_texts: list, top_n: int = 30) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _empty_frequency_results() -> tuple:
+    top_keywords_df = pd.DataFrame(columns=["keyword", "count", "frequency_pct"])
+    top_skills_df = pd.DataFrame(columns=["skill", "count", "frequency_pct"])
+    return top_keywords_df, top_skills_df
+
+
 def compute_keyword_frequency(filtered_df: pd.DataFrame,
                               description_col: str = "description",
                               top_n: int = 30) -> tuple:
@@ -142,8 +148,7 @@ def compute_keyword_frequency(filtered_df: pd.DataFrame,
     """
     if filtered_df.empty:
         print("Warning: empty DataFrame passed to compute_keyword_frequency.")
-        empty = pd.DataFrame()
-        return empty, empty
+        return _empty_frequency_results()
 
     if description_col not in filtered_df.columns:
         raise ValueError(f"Column '{description_col}' not found in DataFrame.")
@@ -156,6 +161,10 @@ def compute_keyword_frequency(filtered_df: pd.DataFrame,
 
     # Cleaned strings for multi-word skill matching
     cleaned_texts = filtered_df[description_col].apply(clean_text).tolist()
+
+    if not any(token_lists) and not any(cleaned_texts):
+        print("Warning: no usable descriptions found for keyword frequency.")
+        return _empty_frequency_results()
 
     top_keywords_df = get_top_keywords(token_lists, top_n=top_n)
     top_skills_df = get_skill_frequency(cleaned_texts, top_n=top_n)
