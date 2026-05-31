@@ -1,5 +1,6 @@
 # Calculates common words and skills for a selected role.
 
+import re
 from collections import Counter
 import pandas as pd
 from src.preprocessing import preprocess_series, clean_text, tokens_to_string
@@ -64,6 +65,23 @@ def get_top_keywords(token_lists: list, top_n: int = 30) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _skill_matches(skill: str, text: str) -> bool:
+    """
+    Return True if the skill appears in the text.
+
+    Single-word skills (e.g. 'r', 'go') use word boundaries so they don't
+    match inside longer words. Multi-word skills (e.g. 'machine learning')
+    use plain substring matching since the boundary check handles the edges
+    of the full phrase naturally.
+    """
+    if " " in skill:
+        # Phrase match: check whole phrase with word boundaries at each end
+        return bool(re.search(r"\b" + re.escape(skill) + r"\b", text))
+    else:
+        # Single-word match: must be a whole word, not part of another word
+        return bool(re.search(r"\b" + re.escape(skill) + r"\b", text))
+
+
 def get_skill_frequency(cleaned_texts: list, top_n: int = 30) -> pd.DataFrame:
     """
     Count how often each skill keyword appears across job descriptions.
@@ -89,7 +107,7 @@ def get_skill_frequency(cleaned_texts: list, top_n: int = 30) -> pd.DataFrame:
 
     for text in cleaned_texts:
         for skill in SKILL_KEYWORDS:
-            if skill in text:
+            if _skill_matches(skill, text):
                 skill_count[skill] += 1
                 skill_doc_freq[skill] += 1
 
