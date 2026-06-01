@@ -101,9 +101,9 @@ Install the required packages:
 pip install -r requirements.txt
 ```
 
-## Future Run Instructions
+## Run Instructions
 
-After the analysis code is implemented, the project will be run from the command line:
+To run the project from the command line:
 
 ```bash
 python main.py

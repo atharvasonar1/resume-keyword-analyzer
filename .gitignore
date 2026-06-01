@@ -8,4 +8,5 @@ data/*.csv
 outputs/*.png
 outputs/*.jpg
 outputs/*.csv
+notebooks/outputs/
 .DS_Store
